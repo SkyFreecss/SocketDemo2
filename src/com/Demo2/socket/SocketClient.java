@@ -8,6 +8,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 
 import com.Demo2.entity.Fileentity;
@@ -41,7 +44,8 @@ public class SocketClient {
     	          
     	          case 3:
     	          System.out.println("再見，感謝您對  sky 私人服務器的支持！");
-    	          System.exit(0);
+    	          System.exit(0);//退出
+    	          
     	          
     	          default:
     	          System.out.println("輸入有誤！");
@@ -152,13 +156,22 @@ public class SocketClient {
     	   Fileentity file = null;
    		   String path = input.next();
    		   String fname = path.substring(path.lastIndexOf("/")+1);
+   		   SimpleDateFormat matter = new SimpleDateFormat("yyyy-MM-dd");
+   		   
+   		   Date uploaddate = null;
+		try {
+			uploaddate = matter.parse(matter.format(new Date()));//将String类型的时间转换为Date类型！
+		} catch (ParseException e1) {
+			
+			e1.printStackTrace();
+		}
 		   CommanderTransfer transfer = new CommanderTransfer();
    		   try {
 			FileInputStream fis = new FileInputStream(path);
 			byte[] fcontext = new byte[fis.available()];
 			BufferedInputStream bis = new BufferedInputStream(fis);
 			bis.read(fcontext);
-			file = new Fileentity(fname,fcontext);
+			file = new Fileentity(fname,fcontext,uploaddate);
 			
 			socket = new Socket("127.0.0.1",8800);
 			transfer.setCmd("upLoadFile");
