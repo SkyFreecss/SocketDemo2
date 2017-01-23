@@ -13,6 +13,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 
+import javax.swing.ProgressMonitor;
+import javax.swing.ProgressMonitorInputStream;
+
+import com.Demo2.GUI.MainFrame;
 import com.Demo2.entity.Fileentity;
 import com.Demo2.entity.User;
 import com.Demo2.util.CommanderTransfer;
@@ -21,12 +25,16 @@ import com.Demo2.util.CommanderTransfer;
 public class SocketClient {
        Scanner input = new Scanner(System.in);
        private Socket socket = null; //客戶端socket
-       
+       private MainFrame mf;
+       static ProgressMonitorInputStream progress;
+       static ProgressMonitor progressmonitor;
+       static FileInputStream fis;
        //主菜單。
        public void showMainMenu()
        {
     	   System.out.println("**********您正在使用此服務器的文件上傳服務**********");
     	   System.out.println("1.註冊、2.登錄、3.退出");
+    	   System.out.println("如果不习惯控制台操作，请按下 4 进入可视化操作界面！");
     	   System.out.println("---------------------------------------------------");
     	   System.out.println("請選擇：");
     	   
@@ -46,6 +54,10 @@ public class SocketClient {
     	          System.out.println("再見，感謝您對  sky 私人服務器的支持！");
     	          System.exit(0);//退出
     	          
+    	          case 4:
+    	          mf = new MainFrame();
+    	          System.out.println("已进入界面操作！");
+    	          break;
     	          
     	          default:
     	          System.out.println("輸入有誤！");
@@ -54,7 +66,52 @@ public class SocketClient {
        }
        
        //登陸實現
-       private void showLogin()
+      public void showLoginFrame(String username,String password)
+       {
+    	   User user = new User();
+    	   CommanderTransfer transfer = new CommanderTransfer();
+    	   int count = 0;//登陸次數
+    	   
+    	   while(true)
+    	   {
+    		   count++;
+    		   if(count>3)
+    		   {
+    			   System.out.println("您已經連續三次登陸失敗，本服務器已關閉！");
+    			   System.exit(0);
+    		   }
+    		   
+    		   user.setUser_name(username);
+    		   user.setUser_password(password);
+    		   transfer.setCmd("login");
+    		   transfer.setData(user);
+    		   
+    		   try {
+				socket = new Socket("127.0.0.1",8800);
+				sendData(transfer);//將數據發送到服務器
+				transfer = getData();//獲取服務器返回的數據
+				System.out.println(transfer.getResult());//顯示輸出結果。
+				System.out.println("-----------------------------------");
+				if(transfer.isFlag())
+				{
+					break;//如果登陸不成功，則不再重複執行登陸。
+				}
+			} catch (UnknownHostException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}finally
+    		   {
+				closeAll();//結束本次socket通信。
+    		   }
+    	   }
+    	   showUpLoadFile();
+       }
+      
+    //登陸實現
+      private void showLogin()
        {
     	   User user = new User();
     	   CommanderTransfer transfer = new CommanderTransfer();
@@ -99,9 +156,10 @@ public class SocketClient {
     	   }
     	   showUpLoadFile();
        }
+      
        
        //註冊實現
-       private void showRegister()
+       public void showRegister()
        {
     	   User user = new User();
     	   CommanderTransfer transfer = new CommanderTransfer();
@@ -167,11 +225,27 @@ public class SocketClient {
 		}
 		   CommanderTransfer transfer = new CommanderTransfer();
    		   try {
-			FileInputStream fis = new FileInputStream(path);
-			byte[] fcontext = new byte[fis.available()];
+            fis = new FileInputStream(path);
+			byte[] fncontext = new byte[fis.available()];
 			BufferedInputStream bis = new BufferedInputStream(fis);
-			bis.read(fcontext);
-			file = new Fileentity(fname,fcontext,uploaddate);
+            /*
+			progress = new ProgressMonitorInputStream(null,"Loading",fis);
+			progressmonitor = progress.getProgressMonitor();
+			int read_unit = 2;//设置每次读取的字符串。
+			int all = progress.available();//得到目标文件的总字节数。
+			int readed = 0;//每次实际读取到的字节数。
+			byte[] data = new byte[read_unit];
+			while(progress.available()>0)
+			{
+				int in = progress.read(data);
+				readed += in;
+				
+				float processload = (float) readed/all *100;
+				progressmonitor.setNote("文件较大，请稍等：" + processload + "%");
+			}
+			*/
+			bis.read(fncontext);
+			file = new Fileentity(fname,fncontext,uploaddate);
 			
 			socket = new Socket("127.0.0.1",8800);
 			transfer.setCmd("upLoadFile");
@@ -223,8 +297,7 @@ public class SocketClient {
 		  try {
 			ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
 			oos.writeObject(transfer);
-			oos.flush();
-			
+			oos.flush();			
 		} catch (IOException e) {
 			// TODO 自动生成的 catch 块
 			e.printStackTrace();
